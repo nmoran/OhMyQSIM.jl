@@ -1,0 +1,6 @@
+authors = ["Niall Moran <niall.moran@ichec.ie>"]
+name = "OhMyQSIM"
+uuid = "19761982-0bba-11ea-3d5f-93c17441e836"
+version = "0.1.0"
+
+[deps]
