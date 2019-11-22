@@ -1,5 +1,6 @@
 module OhMyQSIM
 
-greet() = print("Hello World!")
+include("gates.jl")
+include("quantum_register.jl")
 
 end # module
