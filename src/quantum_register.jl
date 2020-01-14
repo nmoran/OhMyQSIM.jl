@@ -7,9 +7,12 @@ export apply_1qubit_full, apply_1qubit, apply_1qubit!
 export apply_2qubit_full, apply_2qubit, apply_2qubit!
 export decompose_2_qubit_gate
 export swap_2qubits, get_conf, measure, get_counts, measure_probs
+export binary_repr
 
+"Abstract type and parent of all quantum register types"
 abstract type QuantumRegister end
 
+"Implementation type for full state quantum register"
 mutable struct FullStateQuantumRegister{T} <: QuantumRegister
     N::Integer
     state::Array{T, 1}
@@ -48,6 +51,19 @@ function binary_repr(num, N)
     return binary_str
 end
 
+"""
+    to_str(qreg::FullStateQuantumRegister)
+
+Function to convert express fullstate quantum register as a string
+
+# Examples
+```jldoctest
+julia> ψ = FullStateQuantumRegister{Int}(3, "000")
+julia> ψ.state[end] = 1
+julia> to_str(ψ)
+"(1|000>) + (1|111>)"
+```
+"""
 function to_str(qreg::FullStateQuantumRegister)
     N = qreg.N
     str_rep = ""
@@ -70,7 +86,6 @@ function ==(a::FullStateQuantumRegister, b::FullStateQuantumRegister)
     a.state == b.state
 end
 
-
 """
     apply_1qubit_full(qreg, gate, i)
 
@@ -83,7 +98,6 @@ function apply_1qubit_full(qreg::QuantumRegister, gate, i)
     end
     op * qreg.state
 end
-
 
 """
     apply_1qubit(qreg, gate, i)
@@ -98,11 +112,10 @@ function apply_1qubit(qreg::QuantumRegister, gate, i)
 end
 
 """
-    apply_1qubit(qreg, gate, i)
+    apply_1qubit!(qreg, gate, i)
 
 Apply the 1 qubit gate to qubit i inplace
 """
-
 function apply_1qubit!(qreg::QuantumRegister, gate, i)
     qreg.state = apply_1qubit(qreg, gate, i)
 end
@@ -149,13 +162,25 @@ function apply_2qubit_full(qreg::QuantumRegister, gate, i, j)
     total_op * qreg.state
 end
 
+"""
+    apply_2qubit_full!(qreg, gate, i, j)
 
+Apply the provided 2 qubit gate to qubits i and j by expanding full operator matrix
+"""
+function apply_2qubit_full!(qreg::QuantumRegister, gate, i, j)
+    qreg.state = apply_2qubit_full(qreg, gate, i, j)
+end
+
+"""
+    swap_2qubits(X)
+
+Given a two qubit operation, switch the order of the qubits
+"""
 function swap_2qubits(X)
     X = reshape(X, (2, 2, 2, 2))
     X = permutedims(X, (2, 1, 4, 3))
     reshape(X, (4, 4))
 end
-
 
 """
     apply_2qubit(qreg, gate, i, j)
@@ -176,18 +201,15 @@ end
 
 
 """
-    apply_2qubit(qreg, gate, i, j)
+    apply_2qubit!(qreg, gate, i, j)
 
 Apply the provided 2 qubit gate to qubits i and j inplace
 """
-
 function apply_2qubit!(qreg::QuantumRegister, gate, i, j)
     qreg.state = apply_2qubit(qreg, gate, i, j)
 end
 
-function apply_2qubit_full!(qreg::QuantumRegister, gate, i, j)
-    qreg.state = apply_2qubit_full(qreg, gate, i, j)
-end
+
 
 """
     measure_probs(qreg)
