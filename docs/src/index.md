@@ -1,5 +1,7 @@
 # OhMyQSIM.jl Documentation
 
+OhMyQSIM is a toy quantum simulator package written in Julia to experiment with different methods and approaches. If you have ideas on how to improve or extend, please get involved.
+
 ```@meta
 CurrentModule = OhMyQSIM
 ```
