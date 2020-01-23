@@ -1,4 +1,4 @@
-@testset begin
+@testset "Test register initialisation" begin
     @test all(FullStateQuantumRegister{ComplexF64}(3, "000").state .=== convert(Array{ComplexF64, 1}, [1, 0, 0, 0, 0, 0, 0, 0]))
     @test all(FullStateQuantumRegister{ComplexF64}(3, "111").state .=== convert(Array{ComplexF64, 1}, [0, 0, 0, 0, 0, 0, 0, 1]))
     @test all(FullStateQuantumRegister{ComplexF16}(3, "101").state .=== convert(Array{ComplexF16, 1}, [0, 0, 0, 0, 0, 1, 0, 0]))
@@ -11,38 +11,24 @@
         qreg.state[end] = 1
         to_str(qreg) == "(1|000>) + (1|111>)"
     end
-    @test begin
-        a = FullStateQuantumRegister{ComplexF64}(3, "000")
-        b = FullStateQuantumRegister{ComplexF64}(3, "000")
-        b.state *= 1im
-        a ≈ b
-    end
-
-    @test begin
-        a = FullStateQuantumRegister{ComplexF64}(3, "000")
-        b = FullStateQuantumRegister{ComplexF64}(3, "000")
-        b.state *= 1im
-        (a == b) == false
-    end
-
 end
 
 
-@testset begin
+@testset "Test applying 1 qubit gates" begin
     @test begin
         qreg = FullStateQuantumRegister{ComplexF64}(3, "000")
-        apply_1qubit(qreg, Gates.x, 1) == FullStateQuantumRegister{ComplexF64}(3, "100").state
+        apply_1qubit(qreg, Gates.x, 3) == FullStateQuantumRegister{ComplexF64}(3, "001").state
     end
     @test begin
         qreg = FullStateQuantumRegister{ComplexF64}(3, "000")
-        apply_1qubit!(qreg, Gates.x, 1)
-        apply_1qubit(qreg, Gates.z, 1) == -FullStateQuantumRegister{ComplexF64}(3, "100").state
+        apply_1qubit!(qreg, Gates.x, 3)
+        apply_1qubit(qreg, Gates.z, 3) == -FullStateQuantumRegister{ComplexF64}(3, "001").state
     end
     @test begin
         qreg = FullStateQuantumRegister{ComplexF64}(3, "000")
-        apply_1qubit!(qreg, Gates.y, 1)
+        apply_1qubit!(qreg, Gates.y, 3)
         apply_1qubit!(qreg, Gates.x, 2)
-        apply_1qubit(qreg, Gates.y, 2) == FullStateQuantumRegister{ComplexF64}(3, "100").state
+        apply_1qubit(qreg, Gates.y, 2) == FullStateQuantumRegister{ComplexF64}(3, "001").state
     end
     @testset begin
         qreg = FullStateQuantumRegister{ComplexF64}(3, "000")
@@ -76,7 +62,7 @@ end
     kron(A, B) == swap_2qubits(kron(B, A))
 end
 
-@testset begin
+@testset "Test some 2 qubit gates" begin
     @test begin
         qreg = FullStateQuantumRegister{ComplexF64}(3, "000")
         apply_1qubit!(qreg, Gates.x, 1)
@@ -112,6 +98,4 @@ end
         @test get_conf(cprobs, 0.65, 2) == "10"
         @test get_conf(cprobs, 0.99, 2) == "11"
     end
-
-
 end

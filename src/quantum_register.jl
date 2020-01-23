@@ -7,7 +7,7 @@ export apply_1qubit_full, apply_1qubit, apply_1qubit!
 export apply_2qubit_full, apply_2qubit, apply_2qubit!
 export decompose_2_qubit_gate
 export swap_2qubits, get_conf, measure, get_counts, measure_probs
-export binary_repr
+export binary_repr, execute!
 
 "Abstract type and parent of all quantum register types"
 abstract type QuantumRegister end
@@ -16,16 +16,34 @@ abstract type QuantumRegister end
 mutable struct FullStateQuantumRegister{T} <: QuantumRegister
     N::Integer
     state::Array{T, 1}
-    FullStateQuantumRegister{T}(N) where T <: Number = new(2, zeros(T, 2^N))
-    FullStateQuantumRegister{T}(N, state) where T <: Number = new(2, state)
+    FullStateQuantumRegister{T}(N) where T <: Number = new(NTuple, zeros(T, 2^N))
+    FullStateQuantumRegister{T}(N, state) where T <: Number = new(N, state)
     function FullStateQuantumRegister{T}(N, conf::String) where T <: Number
         @assert length(conf) == N
-        state = 1
-        for i in 1:N
-            state = kron(state, conf[i] == '0' ? [1., 0] : [0, 1])
-        end
-        new(N, state)
+        new(N, configuration2vector(conf))
     end
+end
+
+"""
+    configuration2vector(conf::String)
+
+Convert a configuration given as a string to a hilbert space vector
+# Examples
+```jldoctest
+julia> configuration2vector("01")
+4-element Array{Float64,1}:
+ 0.0
+ 1.0
+ 0.0
+ 0.0
+```
+"""
+function configuration2vector(conf::String)
+    state = 1
+    for i in 1:length(conf)
+        state = kron(state, conf[i] == '0' ? [1., 0.] : [0., 1.])
+    end
+    state
 end
 
 """
@@ -33,6 +51,11 @@ end
 
 Get the binary string representation
 of a decimal integer.
+# Examples
+```jldoctest
+julia> println(binary_repr(5, 6))
+"000101"
+```
 """
 function binary_repr(num, N)
     if num >= 1 << N
@@ -78,10 +101,34 @@ function to_str(qreg::FullStateQuantumRegister)
     str_rep
 end
 
-function ≈(a::FullStateQuantumRegister, b::FullStateQuantumRegister)
-    abs(abs(conj(a.state)' * b.state) - 1.0)  < 1e-15
+"""
+    ≈(a::FullStateQuantumRegister{T},
+      b::FullStateQuantumRegister{T}) where T <: Complex
+
+Function which does an approximate comparision of quantum registers with complex elements
+"""
+function ≈(a::FullStateQuantumRegister{T},
+           b::FullStateQuantumRegister{T}) where T <: Complex
+    maximum(abs.(a.state - b.state)) < eps(T.types[1])*log2(length(a.state))*2
 end
 
+"""
+    ≈(a::FullStateQuantumRegister{T},
+      b::FullStateQuantumRegister{T}) where T <: Complex
+
+Function which does an approximate comparision of quantum registers with float elements
+"""
+function ≈(a::FullStateQuantumRegister{T},
+           b::FullStateQuantumRegister{T}) where T <: AbstractFloat
+    maximum(abs.(a.state - b.state)) < eps(T)*log2(length(a.state))*2
+end
+
+"""
+    ==(a::FullStateQuantumRegister{T},
+       b::FullStateQuantumRegister{T})
+
+Function which does an exact comparision of elements of quantum registers
+"""
 function ==(a::FullStateQuantumRegister, b::FullStateQuantumRegister)
     a.state == b.state
 end
@@ -199,7 +246,6 @@ function apply_2qubit(qreg::QuantumRegister, gate, i, j)
     end
 end
 
-
 """
     apply_2qubit!(qreg, gate, i, j)
 
@@ -209,8 +255,6 @@ function apply_2qubit!(qreg::QuantumRegister, gate, i, j)
     qreg.state = apply_2qubit(qreg, gate, i, j)
 end
 
-
-
 """
     measure_probs(qreg)
 
@@ -219,8 +263,6 @@ Get for each bitstring
 function measure_probs(qreg::QuantumRegister)
     real(qreg.state .* conj(qreg.state))
 end
-
-
 
 """
     get_conf(cprobs, num, N)
@@ -261,4 +303,19 @@ function get_counts(results)
         end
     end
     counts
+end
+
+"""
+    execute!(qc::QuantumCircuit, state::QuantumRegister)
+
+Apply the given quantum circuit to the given quantum register in place
+"""
+function execute!(qc::Gates.QuantumCircuit, state::QuantumRegister)
+    for op in qc.ops
+        if op.n == 1
+            apply_1qubit!(state, op.gate, op.qubits[1])
+        elseif op.n == 2
+            apply_2qubit!(state, op.gate, op.qubits[1], op.qubits[2])
+        end
+    end
 end
