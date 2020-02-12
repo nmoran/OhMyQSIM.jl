@@ -13,7 +13,6 @@
     end
 end
 
-
 @testset "Test applying 1 qubit gates" begin
     @test begin
         qreg = FullStateQuantumRegister{ComplexF64}(3, "000")
@@ -76,7 +75,6 @@ end
         apply_1qubit!(qreg, Gates.h, 1)
         apply_2qubit_full(qreg, Gates.cy, 1, 2) ≈ apply_2qubit(qreg, Gates.cy, 1, 2)
     end
-
 end
 
 @testset begin
