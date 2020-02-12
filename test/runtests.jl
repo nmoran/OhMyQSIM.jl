@@ -1,6 +1,7 @@
 using OhMyQSIM
-using Test
-tests = ["gate_tests", "algorithm_tests"]
-for t in tests
-    include("$(t).jl")
+using Compat.Test
+using TestSetExtensions
+
+@testset "All the tests" begin
+    @includetests ARGS
 end

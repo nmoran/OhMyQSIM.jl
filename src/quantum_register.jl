@@ -24,6 +24,10 @@ mutable struct FullStateQuantumRegister{T} <: QuantumRegister
     end
 end
 
+FullStateQuantumRegister(N) = FullStateQuantumRegister{ComplexF64}(N)
+FullStateQuantumRegister(N, state) = FullStateQuantumRegister{ComplexF64}(N, state)
+FullStateQuantumRegister(N, conf::String) = FullStateQuantumRegister{ComplexF64}(N, conf)
+
 """
     configuration2vector(conf::String)
 
@@ -164,6 +168,10 @@ end
 Apply the 1 qubit gate to qubit i inplace
 """
 function apply_1qubit!(qreg::QuantumRegister, gate, i)
+    # reshape to separate link to apply tensor to
+    # state = reshape(qreg.state, (2^(qreg.N-i), 2, 2^(i-1)))
+    #@tensor state[a, d, c] = gate[d, b] * state[a, b, c]
+    # state = reshape(state, (2^qreg.N))
     qreg.state = apply_1qubit(qreg, gate, i)
 end
 
