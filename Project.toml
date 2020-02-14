@@ -1,7 +1,7 @@
 name = "OhMyQSIM"
 uuid = "19761982-0bba-11ea-3d5f-93c17441e836"
 authors = ["Niall Moran <niall.moran@ichec.ie>"]
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
