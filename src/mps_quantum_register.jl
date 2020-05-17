@@ -1,20 +1,20 @@
 import Base.convert
 export MPSQuantumRegister, convert, two_qubit_gate_to_mpo, mpo_to_two_qubit_gate
-export print_info
+export print_info, compress!, enaglemment_entropy, execute!
 
 
 "Implementation type MPS quantum register"
-mutable struct MPSQuantumRegister{T} <: QuantumRegister
+struct MPSQuantumRegister{T} <: QuantumRegister
     N::Integer
     state::Array{Array{T, 3}, 1}
+    s_values::Array{Union{Nothing, Array{<:AbstractFloat, 1}}, 1}
     function MPSQuantumRegister{T}(N::Integer, conf::String) where T <: Number
         @assert length(conf) == N
-        new(N, [init_mps_tensor(c, T) for c in conf])
+        new(N, [init_mps_tensor(c, T) for c in conf], fill(nothing, N-1))
     end
 end
 
 MPSQuantumRegister(N::Integer, conf::String) = MPSQuantumRegister{ComplexF64}(N, conf)
-
 """
     convert(::Type{FullStateQuantumRegister}, x::MPSQuantumRegister)
 
@@ -94,7 +94,7 @@ end
 Apply the 2 qubit gate to qubits i and j, assumes |i - j| = 1
 """
 function apply_2qubit!(qreg::MPSQuantumRegister, gate, i, j)
-    @assert abs(i -j) == 1
+    # @assert abs(i -j) == 1
     if j < i
         apply_2qubit!(qreg, swap_2qubits(gate), j, i)
     else
@@ -113,13 +113,99 @@ function apply_2qubit!(qreg::MPSQuantumRegister, gate, i, j)
         # reshape
         qreg.state[i] = reshape_tensor(state_1, [1, 2, [3, 4]])
         qreg.state[j] = reshape_tensor(state_2, [1, [2, 3], 4])
+
+        if abs(i -j) > 1
+            chi = size(gate_mpo_1)[3]
+            filler_mpo = tensor_identity(chi, chi, 2)
+            for k in i+1:j-1
+                @tensor tmp[qubit_k, up1, up2, down1, down2] :=
+                            qreg.state[k][qubit_k_c, up1, down1] *
+                            filler_mpo[up2, down2, qubit_k_c, qubit_k]
+                qreg.state[k] = reshape_tensor(tmp, [1, [2, 3], [4, 5]])
+            end
+        end
     end
     return
 end
 
+"""
+    function print_info(qreg::MPSQuantumRegister)
+
+Print the dimension of virtual bond dimensions of the given MPS
+"""
 function print_info(qreg::MPSQuantumRegister)
     for i = 1:qreg.N
         dims = size(qreg.state[i])[2:3]
         println("$(i) has virtual dims $(dims)")
+    end
+end
+
+"""
+    compress!(qreg::MPSQuantumRegister)
+
+Compress the provided MPS quantum register
+"""
+function compress!(qreg::MPSQuantumRegister, threshold::AbstractFloat=1e-15)
+    for i in 1:qreg.N-1
+        compress_bond!(qreg, i, threshold)
+    end
+    for i in qreg.N-1:-1:1
+        compress_bond!(qreg, i, threshold)
+    end
+end
+
+function compress_bond!(qreg::MPSQuantumRegister, index::Integer, threshold::AbstractFloat=1e-15)
+    A = qreg.state[index]
+    A_dim = size(A)
+    B = qreg.state[index+1]
+    B_dim = size(B)
+
+    # Contract virtual bond connecting A and B
+    @tensor C[idx1, up, idx2, down] := A[idx1, up, c] * B[idx2, c, down]
+
+    # Reshape to a matrix and decompose
+    dims = size(C)
+    C = reshape(C, (dims[1]*dims[2], dims[3]*dims[4]))
+    F = svd(C)
+
+    # Take cutoff and reshape matrices back
+    s = F.S
+    chi = sum(s .> threshold)
+    s = s[1:chi]
+    qreg.s_values[index] = s./sqrt(sum(s.^2))
+    A = F.U[:,1:chi] * Diagonal(sqrt.(s))
+    qreg.state[index] = reshape(A, (2, A_dim[2], chi))
+    B = Diagonal(sqrt.(s)) * F.Vt[1:chi,:]
+    qreg.state[index+1] = permutedims(reshape(B, (chi, 2, B_dim[3])), (2, 1, 3))
+end
+
+function entropy(s::Array{<:AbstractFloat, 1})
+    -sum(s.^2 .* log.(s.^2))
+end
+
+function enaglemment_entropy(qreg::MPSQuantumRegister)
+    if qreg.s_values[1] == nothing
+        return
+    else
+        return [entropy(qreg.s_values[x]) for x in 1:qreg.N-1]
+    end
+end
+
+"""
+    execute!(qc::QuantumCircuit, state::MPSQuantumRegister)
+
+Specialised execute for MPS Quantum Register
+"""
+function execute!(qc::Gates.QuantumCircuit, state::MPSQuantumRegister,
+                  compress_freq::Integer=0)
+    for (i, op) in enumerate(qc.ops)
+        if op.n == 1
+            apply_1qubit!(state, op.gate, op.qubits[1])
+        elseif op.n == 2
+            apply_2qubit!(state, op.gate, op.qubits[1], op.qubits[2])
+        end
+        if compress_freq > 0 && i % compress_freq == 0
+            compress!(state)
+        end
     end
 end
