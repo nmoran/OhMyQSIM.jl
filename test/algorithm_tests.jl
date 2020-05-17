@@ -1,6 +1,6 @@
 using FFTW
 
-@testset "Algorithm tests" begin
+@testset "QFT circuit tests" begin
     @test begin
         n = 2
         results = zeros(Bool, 2^n)
@@ -40,5 +40,19 @@ using FFTW
         ref_state /= sqrt(sum(conj(ref_state) .* ref_state))
         qreg_ref = FullStateQuantumRegister{ComplexF64}(n, ref_state)
         qreg ≈ qreg_ref
+    end
+end
+
+@testset "GHZ circuit tests" begin
+    @test begin
+        results = []
+        for n in 1:5
+            qc = ghz_circuit(n)
+            qreg = FullStateQuantumRegister{ComplexF64}(n, "0"^n)
+            execute!(qc, qreg)
+            push!(results,
+                  qreg.state[1] == 1/sqrt(2) && qreg.state[end] == 1/sqrt(2))
+        end
+        all(results)
     end
 end

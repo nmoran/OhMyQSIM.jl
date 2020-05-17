@@ -314,11 +314,11 @@ function get_counts(results)
 end
 
 """
-    execute!(qc::QuantumCircuit, state::QuantumRegister)
+    execute!(qc::QuantumCircuit, state::FullStateQuantumRegister)
 
 Apply the given quantum circuit to the given quantum register in place
 """
-function execute!(qc::Gates.QuantumCircuit, state::QuantumRegister)
+function execute!(qc::Gates.QuantumCircuit, state::FullStateQuantumRegister)
     for op in qc.ops
         if op.n == 1
             apply_1qubit!(state, op.gate, op.qubits[1])
