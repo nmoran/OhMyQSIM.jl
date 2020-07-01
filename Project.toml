@@ -18,7 +18,7 @@ TestSetExtensions = "98d24dd4-01ad-11ea-1b02-c9a08f80db04"
 
 [compat]
 Compat = "3.10.0"
-Documenter = "0.24.3"
+Documenter = "0.24.3, 0.25"
 DocumenterTools = "0.1.4"
 FFTW = "1.1.0"
 MbedTLS = "0.6.8, 1.0"
